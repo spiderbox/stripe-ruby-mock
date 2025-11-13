@@ -33,5 +33,16 @@ shared_examples "Completing Checkout Sessions" do
     subscription = test_helper.complete_checkout_session(session, payment_method)
 
     expect(subscription.default_payment_method).to eq(payment_method.id)
+    expect(subscription.current_period_start).to_not be_nil
+    expect(subscription.current_period_end).to_not be_nil
+    expect(subscription.current_period_end).to be > subscription.current_period_start
+    
+    # Check subscription items also have period fields
+    subscription.items.data.each do |item|
+      expect(item.current_period_start).to_not be_nil
+      expect(item.current_period_end).to_not be_nil
+      expect(item.current_period_start).to eq(subscription.current_period_start)
+      expect(item.current_period_end).to eq(subscription.current_period_end)
+    end
   end
 end
