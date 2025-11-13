@@ -73,4 +73,39 @@ shared_examples 'Subscription Items API' do
       }
     end
   end
+
+  context 'subscription items have current_period fields' do
+    it 'items have current_period_start and current_period_end matching subscription' do
+      sub = Stripe::Subscription.create(customer: customer.id, items: [{ plan: plan.id }])
+      
+      expect(sub.items.data.length).to eq(1)
+      item = sub.items.data.first
+      
+      expect(item.current_period_start).to_not be_nil
+      expect(item.current_period_end).to_not be_nil
+      expect(item.current_period_start).to eq(sub.current_period_start)
+      expect(item.current_period_end).to eq(sub.current_period_end)
+      expect(item.current_period_end).to be > item.current_period_start
+    end
+
+    it 'multi-item subscriptions have matching period fields on all items' do
+      sub = Stripe::Subscription.create(
+        customer: customer.id,
+        items: [
+          { plan: plan.id, quantity: 2 },
+          { plan: plan2.id, quantity: 1 }
+        ]
+      )
+      
+      expect(sub.items.data.length).to eq(2)
+      
+      sub.items.data.each do |item|
+        expect(item.current_period_start).to_not be_nil
+        expect(item.current_period_end).to_not be_nil
+        expect(item.current_period_start).to eq(sub.current_period_start)
+        expect(item.current_period_end).to eq(sub.current_period_end)
+        expect(item.current_period_end).to be > item.current_period_start
+      end
+    end
+  end
 end

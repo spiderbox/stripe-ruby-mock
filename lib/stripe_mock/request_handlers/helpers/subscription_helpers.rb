@@ -10,16 +10,32 @@ module StripeMock
         subscription.merge!(custom_subscription_params(plans, customer, options))
         items = options[:items]
         items = items.values if items.respond_to?(:values)
+        
+        # Calculate period fields for subscription items
+        # These should match the subscription's current_period_start and current_period_end
+        start_time = subscription[:current_period_start]
+        end_time = subscription[:current_period_end]
+        
         subscription[:items][:data] = plans.map do |plan|
           matching_item = items && items.detect { |item| [item[:price], item[:plan]].include? plan[:id] }
+          
           if matching_item
             matching_item[:quantity] ||= 1
             matching_item[:id] ||= new_id('si')
-            params = matching_item.merge(plan: plan)
+            params = matching_item.merge(
+              plan: plan,
+              current_period_start: start_time,
+              current_period_end: end_time
+            )
             params[:price] = plan if plan[:object] == "price"
             Data.mock_subscription_item(params)
           else
-            params = { plan: plan, id: new_id('si') }
+            params = {
+              plan: plan,
+              id: new_id('si'),
+              current_period_start: start_time,
+              current_period_end: end_time
+            }
             params[:price] = plan if plan[:object] == "price"
             Data.mock_subscription_item(params)
           end
@@ -30,6 +46,8 @@ module StripeMock
       def custom_subscription_params(plans, cus, options = {})
         verify_trial_end(options[:trial_end]) if options[:trial_end]
 
+        # Use first plan for period calculation, but only set :plan attribute if single item
+        plan_for_period = plans.first unless plans.empty?
         plan = plans.first if plans.size == 1
 
         now = Time.now.utc.to_i
@@ -59,11 +77,11 @@ module StripeMock
 
         # TODO: Implement coupon logic
 
-        if (((plan && plan[:trial_period_days]) || 0) == 0 && options[:trial_end].nil?) || options[:trial_end] == "now"
-          end_time = options[:billing_cycle_anchor] || get_ending_time(start_time, plan)
+        if (((plan_for_period && plan_for_period[:trial_period_days]) || 0) == 0 && options[:trial_end].nil?) || options[:trial_end] == "now"
+          end_time = options[:billing_cycle_anchor] || get_ending_time(start_time, plan_for_period)
           params.merge!({status: 'active', current_period_end: end_time, trial_start: nil, trial_end: nil, billing_cycle_anchor: options[:billing_cycle_anchor] || created_time})
         else
-          end_time = options[:trial_end] || (Time.now.utc.to_i + plan[:trial_period_days]*86400)
+          end_time = options[:trial_end] || (Time.now.utc.to_i + plan_for_period[:trial_period_days]*86400)
           params.merge!({status: 'trialing', current_period_end: end_time, trial_start: start_time, trial_end: end_time, billing_cycle_anchor: options[:billing_cycle_anchor] || created_time})
         end
 
