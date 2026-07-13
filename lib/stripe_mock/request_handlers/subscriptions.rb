@@ -298,9 +298,11 @@ module StripeMock
         if params[:cancel_at_period_end]
           subscription[:cancel_at_period_end] = true
           subscription[:canceled_at] = Time.now.utc.to_i
+          subscription[:cancel_at] = Time.now.utc.to_i
         elsif params.has_key?(:cancel_at_period_end)
           subscription[:cancel_at_period_end] = false
           subscription[:canceled_at] = nil
+          subscription[:cancel_at] = nil
         end
 
         params[:current_period_start] = subscription[:current_period_start]
@@ -333,6 +335,7 @@ module StripeMock
         cancelled_at_period_end = (params[:at_period_end] == true)
         if cancelled_at_period_end
           cancel_params[:cancel_at_period_end] = true
+          cancel_params[:cancel_at] = nil
         else
           cancel_params[:status] = 'canceled'
           cancel_params[:cancel_at_period_end] = false

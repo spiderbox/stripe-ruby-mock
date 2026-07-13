@@ -1269,7 +1269,9 @@ module StripeMock
           trial_period_days: nil
         },
         quantity: 2,
-        price: mock_price
+        price: mock_price,
+        current_period_start: nil,
+        current_period_end: nil
       }.merge(params)
     end
 
